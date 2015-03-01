@@ -13,6 +13,7 @@ import javax.xml.xpath.XPathFactory;
 
 import org.ow2.easywsdl.wsdl.WSDLFactory;
 import org.ow2.easywsdl.wsdl.api.Binding;
+import org.ow2.easywsdl.wsdl.api.BindingOperation;
 import org.ow2.easywsdl.wsdl.api.Description;
 import org.ow2.easywsdl.wsdl.api.WSDLReader;
 import org.w3c.dom.Document;
@@ -35,8 +36,13 @@ public class Application {
 		try{
 			WSDLReader reader = WSDLFactory.newInstance().newWSDLReader();
 			Description d = reader.read(new URI(filePath).toURL());
-			String str = d.getBindings().get(0).getBindingOperations().get(0).getOperation().getQName().getLocalPart();
-
+			//String str = d.getBindings().get(0).getBindingOperations().get(0).getOperation().getQName().getLocalPart();
+			for(Binding b : d.getBindings()){
+				for(BindingOperation o : b.getBindingOperations()) {
+					String str = o.getQName().getLocalPart();
+					System.out.println(str);
+				}
+			}
 //			Types t = d.getTypes();
 //			d.getTypes().getOtherElements().get(0).getNodeName();
 			
