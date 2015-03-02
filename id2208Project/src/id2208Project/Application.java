@@ -23,7 +23,7 @@ import com.predic8.wsdl.WSDLParser;
 public class Application {
 
 	public final String filePath = 
-			"/home/stefan/programs/gitLocal/id2208project/id2208Project/resources/WSDLs/ResortDataProcessingAPIProfile.wsdl";
+			"/home/stefan/programs/gitLocal/id2208project/id2208Project/resources/WSDLs/ACHWorksAPIProfile.wsdl";
 	private List<id2208Project.Operation> operationList = new ArrayList<>();
 
 	public static void main(String args []) {
@@ -33,8 +33,13 @@ public class Application {
 
 	Application(){
 		parseWsdl();
-
+		compareWs();
 	}
+	
+	private void compareWs(){
+		
+	}
+	
 	//Append to operationList. After method completion operationList is populated with the correct data
 	private void parseWsdl(){
 		WSDLParser parser = new WSDLParser();
@@ -60,13 +65,15 @@ public class Application {
 					//Handle missing root element
 					else if(p.getElement() == null && p.getType().getName() != null){
 						Schema s = p.getType().getSchema();
-						//QName q = p.getType().getQname();
+						
 						s.newElement("tmp1", p.getType().getName());
-						List<String> partInputList = listParams(s.getElement("tmp1"));
+						List<String> partInputList = new ArrayList<String>(); 
+						listParams(s.getElement("tmp1"), partInputList);
 						inputList.addAll(partInputList);
 					}
 					else {
-						List<String> partInputList = listParams(defs.getElement(p.getElement().getQname()));
+						List<String> partInputList = new ArrayList<String>(); 
+						listParams(defs.getElement(p.getElement().getQname()), partInputList);
 						inputList.addAll(partInputList);	
 					}
 
@@ -88,12 +95,14 @@ public class Application {
 					else if(p.getElement() == null && p.getType().getName() != null){
 						Schema s = p.getType().getSchema();
 						s.newElement("tmp2", p.getType().getName());
-						List<String> partOutputList = listParams(s.getElement("tmp2"));
+						List<String> partOutputList = new ArrayList<String>(); 
+						listParams(s.getElement("tmp2"), partOutputList);
 						outputList.addAll(partOutputList);
 					}
 					else {
-						List<String> partInputList = listParams(defs.getElement(p.getElement().getQname()));
-						inputList.addAll(partInputList);	
+						List<String> partOutputList = new ArrayList<String>();
+						listParams(defs.getElement(p.getElement().getQname()), partOutputList);
+						outputList.addAll(partOutputList);	
 					}
 				}
 
@@ -104,23 +113,15 @@ public class Application {
 		}
 	}
 
-	private void inputAndOutPut() {
 
-	}
 	/**
 	 * Get the params associated with Operation element 
 	 * @param element - Operation element whose argument to be inspected
 	 * @return - A list containing all parameters associated with Operation
 	 */
-	private List<String> listParams(Element element){
+	private void listParams(Element element, List <String> list){
 
-
-
-
-
-
-		List<String> paramList = new ArrayList<String>();
-		//ComplexType ct = (ComplexType) element.getEmbeddedType();
+		
 		Schema schema = element.getSchema();
 		List<Schema> schemaList = schema.getAllSchemas();
 		TypeDefinition someType = element.getEmbeddedType();
@@ -131,7 +132,7 @@ public class Application {
 			if(element.getType() == null || element.getType().getNamespaceURI().equals("http://www.w3.org/2001/XMLSchema")) {
 				//base case
 				System.out.println(element.getName());
-				return new ArrayList<String>();
+				list.add(element.getName());
 			}
 			else {
 				for(Schema s : schemaList) {
@@ -145,7 +146,7 @@ public class Application {
 							if(typeDef instanceof ComplexType){
 								for(Element e : s.getComplexType(der.getBase().getQualifiedName()).
 										getSequence().getElements()) {
-									listParams(e);
+									listParams(e, list);
 								}
 							}
 
@@ -159,23 +160,18 @@ public class Application {
 							ModelGroup m = (ModelGroup) c.getModel();
 							m.getElements();
 							for(Element e: ((ModelGroup)c.getModel()).getElements()) {
-								listParams(e);		
+								listParams(e, list);		
 							}
 						}
 
 						else {
 							for(Element e: s.getComplexType(element.getType().
 									getLocalPart()).getSequence().getElements()) {
-								listParams(e);		
+								listParams(e, list);		
 							}
 						}
-
-
 					}
-
 				}
-
-
 			}
 		}
 
@@ -188,7 +184,7 @@ public class Application {
 				ModelGroup m = (ModelGroup) c.getModel();
 				m.getElements();
 				for(Element e: ((ModelGroup)c.getModel()).getElements()) {
-					listParams(e);		
+					listParams(e, list);		
 				}
 			}
 
@@ -198,7 +194,7 @@ public class Application {
 
 					for(Element ee : ((ComplexType) someType).getSequence().getElements()){
 						//String type = ee.getType().getLocalPart();
-						listParams(ee);
+						listParams(ee, list);
 
 					}
 				}
@@ -209,6 +205,7 @@ public class Application {
 
 		if(someType instanceof SimpleType) {
 			System.out.println(element.getName());
+			list.add(element.getName());
 		}
 		//		for(Element ee : ct.getSequence().getElements()){
 		//			String type = ee.getType().getLocalPart();
@@ -238,6 +235,6 @@ public class Application {
 		//			}
 		//
 		//		}
-		return paramList;
+		
 	}
 }
