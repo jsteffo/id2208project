@@ -103,10 +103,8 @@ public class Application {
 				return new ArrayList<String>();
 			}
 			else {
-				
 				for(Schema s : schemaList) {
-					if(s.getType(element.getType()) instanceof ComplexType){
-						
+					if(s.getType(element.getType().getLocalPart()) instanceof ComplexType){	
 						for(Element e: s.getComplexType(element.getType().
 								getLocalPart()).getSequence().getElements()) {
 							listParams(e);		
