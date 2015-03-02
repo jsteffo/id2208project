@@ -23,7 +23,7 @@ import com.predic8.wsdl.WSDLParser;
 public class Application {
 
 	public final String filePath = 
-			"/home/stefan/programs/gitLocal/id2208project/id2208Project/resources/WSDLs/GlobalMatrixAPIProfile.wsdl";
+			"/home/stefan/programs/gitLocal/id2208project/id2208Project/resources/WSDLs/ResortDataProcessingAPIProfile.wsdl";
 	private List<id2208Project.Operation> operationList = new ArrayList<>();
 
 	public static void main(String args []) {
@@ -127,7 +127,7 @@ public class Application {
 
 		//Base case
 		if(someType == null){
-			
+
 			if(element.getType() == null || element.getType().getNamespaceURI().equals("http://www.w3.org/2001/XMLSchema")) {
 				//base case
 				System.out.println(element.getName());
@@ -135,15 +135,15 @@ public class Application {
 			}
 			else {
 				for(Schema s : schemaList) {
-					
+
 					if(s.getType(element.getType().getLocalPart()) instanceof ComplexType){	
 						ComplexType c = s.getComplexType(element.getType().getLocalPart());
 						if(c.getModel() instanceof ComplexContent) {
 							Derivation der = ((ComplexContent) c.getModel()).getDerivation();
-							System.out.println(der.getBase().getLocalPart());
-							TypeDefinition typeDef = s.getType((der.getBase().getLocalPart()));
+							
+							TypeDefinition typeDef = s.getType((der.getBase().getQualifiedName()));
 							if(typeDef instanceof ComplexType){
-								for(Element e : s.getComplexType(der.getBase().getLocalPart()).
+								for(Element e : s.getComplexType(der.getBase().getQualifiedName()).
 										getSequence().getElements()) {
 									listParams(e);
 								}
@@ -154,8 +154,8 @@ public class Application {
 						//c.getSequence().getElements();
 						//If all type
 						else if(c.getModel() instanceof ModelGroup){
-							//System.out.println(c.getModel());
 							
+
 							ModelGroup m = (ModelGroup) c.getModel();
 							m.getElements();
 							for(Element e: ((ModelGroup)c.getModel()).getElements()) {
@@ -169,7 +169,7 @@ public class Application {
 								listParams(e);		
 							}
 						}
-						
+
 
 					}
 
@@ -180,12 +180,31 @@ public class Application {
 		}
 
 		if(someType instanceof ComplexType){
-			for(Element ee : ((ComplexType) someType).getSequence().getElements()){
-				//String type = ee.getType().getLocalPart();
-				ee.getName();
-				listParams(ee);
 
+			ComplexType c = (ComplexType) someType;
+			//In case of all
+			if(c.getModel() instanceof ModelGroup){
+
+				ModelGroup m = (ModelGroup) c.getModel();
+				m.getElements();
+				for(Element e: ((ModelGroup)c.getModel()).getElements()) {
+					listParams(e);		
+				}
 			}
+
+			else{
+				if(c.getSequence() != null) {
+
+
+					for(Element ee : ((ComplexType) someType).getSequence().getElements()){
+						//String type = ee.getType().getLocalPart();
+						listParams(ee);
+
+					}
+				}
+			}
+
+
 		}
 
 		if(someType instanceof SimpleType) {
