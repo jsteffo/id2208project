@@ -9,6 +9,9 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -60,6 +63,7 @@ public class Application {
 	private String schemaNamespace = "http://www.w3.org/2001/XMLSchema";
 	private final String outputPath = "src/out/out.xml";
 	private static final String baseURI = "resources/WSDLs/";
+	private final String sawsdlDir = "/home/stefan/programs/gitLocal/id2208project/id2208Project/resources/SAWSDL";
 	private Document doc;
 	//private static String filePath1;
 	//private static String filePath2;
@@ -76,21 +80,107 @@ public class Application {
 	}
 
 	Application(String path1, String path2){
+		List<Path> pathList = new ArrayList<>();
+		try {
+			Files.walk(Paths.get(sawsdlDir)).forEach(filePath -> {
+			    if (Files.isRegularFile(filePath)) {
+			        pathList.add(filePath);
+			    }
+			});
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		for(Path p1 : pathList){
+			for(Path p2 : pathList) {
+				System.out.println(p1.toString());
+				List <id2208Project.Operationa> oplist1 = domParseWSDL(p1.toString());
+				System.out.println(p2.toString());
+				List <id2208Project.Operationa> oplist2 = domParseWSDL(p2.toString());
+				
+				
+				//printOperationList(oplist1);
+				compareSemanticsWs(oplist1, oplist2, p1.toString(), p2.toString());
+
+			}
+		}
 		String filePath1 = baseURI + path1;
 		String filePath2 = baseURI + path2;
-		filePath1 = "/home/stefan/programs/gitLocal/id2208project/id2208Project/resources/SAWSDL/_cameraprice_MyShopservice.wsdl";
+		
+		filePath1 = "/home/stefan/programs/gitLocal/id2208project/id2208Project/resources/SAWSDL/_comedyfilmactionfilm_service.wsdl";
+		filePath2 ="/home/stefan/programs/gitLocal/id2208project/id2208Project/resources/SAWSDL/_comedyfilmfantacyfilm_service.wsdl";
 		//List <id2208Project.Operation> opList1 = parseWsdl(filePath1);
 		//List <id2208Project.Operation> opList2 = parseWsdl(filePath2);
 		
 		//testDom(filePath1);
-		List <id2208Project.Operationa> oplist1 = domParseWSDL(filePath1);
-		//printOperationList(oplist1);
-		
-		printOperationList2(oplist1);
+
+		//printOperationList2(oplist1);
 		
 		//compareWs(opList1, opList2, false);
-		//writeFile();
+		
+		writeFile();
 		//testSa(filePath1);
+		//System.out.println(ontology.App.getMatching("DepositAccount", "CheckingAccount"));
+		//System.out.println(ontology.App.isSubclass("DepositAccount", "CheckingAccount"));
+	}
+	
+	private void compareSemanticsWs(List<id2208Project.Operationa> opInputList,
+			List<id2208Project.Operationa> opOutputList, String ws1, String ws2) {
+		MatchedWebServiceType m = new MatchedWebServiceType();
+		m.setInputServiceName(ws1);
+		m.setOutputServiceName(ws2);
+		
+
+		double serviceScore = 0;
+		int nbrOperationMatch = 0;
+		
+		for(id2208Project.Operationa op1 : opInputList) {
+			for(id2208Project.Operationa op2 : opOutputList) {
+				nbrOperationMatch++;
+				String op1Name= op1.getName();
+				String op2Name = op2.getName();
+
+				MatchedOperationType mOp = new MatchedOperationType();
+				mOp.setInputOperationName(op1Name);
+				mOp.setOutputOperationName(op2Name);
+				m.getMacthedOperation().add(mOp);
+				List<Input> argumentInput = op1.getInputList();
+				List<Input> argumentOutput = op2.getOutputList();
+				int min = Math.min(op1.getInputList().size(), op2.getOutputList().size());
+				int numberOfTimes = min;
+				double opSum = 0;
+				for(int i = 0; i < min; i++) {
+					String input = argumentInput.get(i).getName();
+					String output = argumentOutput.get(i).getName();
+
+					MatchedElementType mElem = new MatchedElementType();
+					mElem.setInputElement(input);
+
+					mElem.setOutputElement(output);
+					//mElem.setScore(EditDistance.getSimilarity(input, output));
+					double score = ontology.App.getMatching(argumentInput.get(i).getAnnotation(),
+							argumentOutput.get(i).getAnnotation());
+					mElem.setScore(score);
+					mOp.getMacthedElement().add(mElem);
+					opSum += score;
+				}
+				double avg;
+				if(numberOfTimes==0) {
+					avg = 0;
+				} else {
+					avg = opSum / numberOfTimes;	
+				}
+
+				serviceScore += avg;
+				mOp.setOpScore(avg);
+
+			}
+		}
+		double score = serviceScore/nbrOperationMatch;
+		m.setWsScore(serviceScore/nbrOperationMatch);
+		if(score > 0.1){
+			ws.getMacthing().add(m);
+		}
 	}
 	
 	private List<id2208Project.Operationa> domParseWSDL(String filePath1){
@@ -132,7 +222,7 @@ public class Application {
 				expr="wsdl:part";
 				NodeList partNodeList = (NodeList) xpath.compile(expr).evaluate(messageNode, XPathConstants.NODESET);
 				List<Input> inputList = new ArrayList<Input>();
-			
+				
 				for(int j = 0; j<partNodeList.getLength(); j++) {
 					Node partNode = partNodeList.item(j);
 					
@@ -141,11 +231,25 @@ public class Application {
 					String typeName = getLocalName(partNode.getAttributes().getNamedItem("type").getNodeValue());
 					//Nu är det dags att röra sig mot schemas...
 					expr="//*[@name='" + typeName + "']";
-					Node root = (Node) xpath.compile(expr).evaluate(doc, XPathConstants.NODE);
-					//System.out.println(root.getAttributes().getNamedItem("name").getNodeValue());
-					List<Input> inputListFragment = new ArrayList<Input>();
-					recursiveTraverse(root, xpath, inputListFragment,"");
-					inputList.addAll(inputListFragment);
+					Node root= (Node) xpath.compile(expr).evaluate(doc, XPathConstants.NODE);
+//					Node root = rootList.item(0);
+//					for(int k = 0; k<rootList.getLength(); k++) {
+//						Node nn = rootList.item(k);
+//						if(nn.getAttributes().getNamedItem("sawsdl:modelReference") != null){
+//							root = nn;
+//						}
+//					}
+					//System.out.println("input");
+					String argumentName = root.getAttributes().getNamedItem("name").getNodeValue();
+					String modelRef= root.getAttributes().getNamedItem("sawsdl:modelReference").getNodeValue();
+				
+					String ref = modelRef.split("#")[1];
+					inputList.add(new Input(argumentName, ref));
+//					Node root = (Node) xpath.compile(expr).evaluate(doc, XPathConstants.NODE);
+//					//System.out.println(root.getAttributes().getNamedItem("name").getNodeValue());
+//					List<Input> inputListFragment = new ArrayList<Input>();
+//					recursiveTraverse(root, xpath, inputListFragment,"");
+//					inputList.addAll(inputListFragment);
 				}
 				
 				expr = "wsdl:output";
@@ -166,11 +270,24 @@ public class Application {
 					String typeName = getLocalName(partNode.getAttributes().getNamedItem("type").getNodeValue());
 					//Nu är det dags att röra sig mot schemas...
 					expr="//*[@name='" + typeName + "']";
-					Node root = (Node) xpath.compile(expr).evaluate(doc, XPathConstants.NODE);
+					
+					Node root= (Node) xpath.compile(expr).evaluate(doc, XPathConstants.NODE);
+//					
+//					for(int k = 0; k<rootList.getLength(); k++) {
+//						Node nn = rootList.item(k);
+//						if(nn.getAttributes().getNamedItem("sawsdl:modelReference") != null){
+//							root = nn;
+//						}
+//					}
+					String argumentName = root.getAttributes().getNamedItem("name").getNodeValue();
+					String modelRef= root.getAttributes().getNamedItem("sawsdl:modelReference").getNodeValue();
+					String ref = modelRef.split("#")[1];
+					
+					outputList.add(new Input(argumentName, ref));
 					//System.out.println(root.getAttributes().getNamedItem("name").getNodeValue());
-					List<Input> outputListFragment = new ArrayList<Input>();
-					recursiveTraverse(root, xpath, outputListFragment,"");
-					outputList.addAll(outputListFragment);
+//					List<Input> outputListFragment = new ArrayList<Input>();
+//					recursiveTraverse(root, xpath, outputListFragment,"");
+//					outputList.addAll(outputListFragment);
 					
 				}
 				
@@ -409,7 +526,7 @@ public class Application {
 			System.out.println();
 			System.out.println("input: ");
 			for(Input s : o.getInputList()){
-				System.out.println(s.getName());
+				System.out.println(s.getName() + "  " + s.getAnnotation());
 			}
 			System.out.println();
 			System.out.println("output: ");
